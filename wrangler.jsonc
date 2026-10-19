@@ -1,13 +1,14 @@
 {
-  // Nombre del Worker: debe ser IGUAL al nombre que se crea en el panel de Cloudflare
+  // Nombre del Worker: debe ser IGUAL al nombre que se creó en el panel de Cloudflare
   "name": "administracion-smart",
   "compatibility_date": "2026-10-19",
 
   // Solo se publica la carpeta public/ (supabase/, serve.ps1 y demás quedan fuera)
   "assets": { "directory": "./public" },
 
-  // Dominio del sistema (Cloudflare crea el DNS y el certificado HTTPS automáticamente)
-  "routes": [
-    { "pattern": "portal.ibyzaedificios.com", "custom_domain": true }
-  ]
+  // El dominio (portal.ibyzaedificios.com) se administra desde el panel de Cloudflare:
+  // Workers & Pages > administracion-smart > Domains. No se declara aquí a propósito.
+  // La dirección de pruebas *.workers.dev queda apagada.
+  "workers_dev": false,
+  "preview_urls": false
 }
