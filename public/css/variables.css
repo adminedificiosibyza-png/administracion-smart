@@ -1,0 +1,70 @@
+/* CSS Variables & Design System - Sistema de Administración de Edificios */
+/* Identidad visual PARKE10: base blanca + verde institucional #4f7609 */
+:root {
+  /* Surfaces */
+  --bg-dark: #f7f8f5;            /* fondo de página (blanco cálido muy suave) */
+  --bg-card: #ffffff;
+  --bg-card-hover: #fbfcf9;
+  --bg-card-solid: #ffffff;
+  --bg-sidebar: #ffffff;
+  --bg-input: #f3f5f0;
+  --bg-subtle: #f3f5f0;          /* fondos auxiliares */
+
+  --border-color: #e3e7dc;
+  --border-highlight: rgba(79, 118, 9, 0.35);
+
+  /* Primary (RGB 79,118,9) */
+  --primary: #4f7609;
+  --primary-hover: #3f5f07;
+  --primary-dark: #2f4705;
+  --primary-light: rgba(79, 118, 9, 0.10);
+  --primary-soft: #eef4e2;
+  --primary-rgb: 79, 118, 9;
+
+  /* Legacy accent aliases -> tonos verdes/neutros (sin azul) */
+  --accent-cyan: #4f7609;
+  --accent-indigo: #4f7609;
+  --accent-purple: #6b8f2a;
+
+  /* Status Colors */
+  --status-success: #4f7609;
+  --status-warning: #b7791f;
+  --status-danger: #b42318;
+  --status-neutral: #6b7280;
+
+  --status-success-bg: rgba(79, 118, 9, 0.10);
+  --status-warning-bg: rgba(183, 121, 31, 0.12);
+  --status-danger-bg: rgba(180, 35, 24, 0.09);
+  --status-neutral-bg: rgba(107, 114, 128, 0.12);
+
+  /* Text Colors */
+  --text-main: #1a1f16;
+  --text-muted: #5b6355;
+  --text-dim: #8a9283;
+  --text-on-primary: #ffffff;
+
+  /* Typography */
+  --font-family-headings: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Layout & Spacing */
+  --sidebar-width: 260px;
+  --topbar-height: 64px;
+  --demobar-height: 52px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(26, 31, 22, 0.06);
+  --shadow-md: 0 6px 16px rgba(26, 31, 22, 0.08);
+  --shadow-lg: 0 16px 32px rgba(26, 31, 22, 0.14);
+  --glass-backdrop: none;
+  --glass-border: 1px solid #e3e7dc;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+}

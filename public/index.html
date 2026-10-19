@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Administración Smart</title>
+  
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@1.59.0"></script>
+
+  <!-- Supabase JS Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="theme-dark">
+  <!-- Pantalla de ingreso (solo con Supabase conectado y sin sesión) -->
+  <div id="login-root" class="login-root" hidden></div>
+
+  <div id="app" class="app-root">
+    <!-- Top Demo & Switcher Bar -->
+    <header class="demo-bar">
+      <div class="demo-bar-brand">
+        <img src="assets/logo.svg" alt="Administracion Smart" class="brand-logo">
+        <span class="brand-name">ADMINISTRACION <span class="brand-accent">SMART</span></span>
+        <span class="badge badge-building" id="header-building-badge"><i data-lucide="map-pin"></i> <span id="current-building-name">PARKE10 - Arequipa</span> <i data-lucide="chevron-down" class="switch-icon"></i></span>
+        <span id="data-source-badge" class="badge badge-neutral" style="font-size: 0.7rem; margin-left: 0.5rem;" title="Origen de datos actual">
+          Fuente: MOCK (Local)
+        </span>
+      </div>
+
+      <div class="demo-bar-controls">
+        <div class="role-selector-wrapper">
+          <label for="role-select" class="role-label"><i data-lucide="user-check"></i> Modo Vista:</label>
+          <select id="role-select" class="role-select">
+            <option value="propietario" selected> Propietario (Dpto 502 - Carlos Mendoza)</option>
+            <option value="administradora"> Administradora del Edificio</option>
+          </select>
+        </div>
+
+        <button id="auth-modal-btn" class="btn btn-outline btn-sm">
+          <i data-lucide="key-round"></i> Acceso Supabase / OTP
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="app-container">
+      <!-- Sidebar Navigation (Desktop) -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="building-card" id="sidebar-building-card">
+            <div class="building-avatar" id="sidebar-building-avatar">P10</div>
+            <div class="building-info">
+              <h3 id="sidebar-building-title">PARKE10</h3>
+              <p id="sidebar-building-sub">52 Departamentos • 11 Pisos</p>
+            </div>
+            <i data-lucide="chevrons-up-down" class="switch-icon"></i>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" id="sidebar-nav">
+          <!-- Dynamically populated based on active role -->
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-badge" id="sidebar-user-badge">
+            <div class="user-avatar" id="user-avatar-initials">CM</div>
+            <div class="user-details">
+              <span class="user-name" id="user-display-name">Carlos Mendoza</span>
+              <span class="user-role-label" id="user-display-role">Propietario • Dpto 502</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <!-- Top App Bar -->
+        <header class="top-bar">
+          <div class="page-title-group">
+            <button id="mobile-menu-toggle" class="btn-icon mobile-only">
+              <i data-lucide="menu"></i>
+            </button>
+            <button id="btn-back" class="btn-icon" hidden aria-label="Volver a la pantalla anterior" title="Volver">
+              <i data-lucide="arrow-left"></i>
+            </button>
+            <h1 id="page-title">Sistema de Administración de Edificios</h1>
+          </div>
+
+          <div class="top-bar-actions">
+            <div class="date-badge">
+              <i data-lucide="calendar"></i>
+              <span id="current-date-display">05/10/2026</span>
+            </div>
+            
+            <button id="notifications-btn" class="btn-icon badge-notification">
+              <i data-lucide="bell"></i>
+              <span class="notification-dot"></span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Dynamic View Content Container -->
+        <div id="view-container" class="view-container">
+          <!-- View JS modules render here -->
+        </div>
+      </main>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+      <!-- Dynamically populated based on active role -->
+    </nav>
+  </div>
+
+  <!-- Global Modal Container -->
+  <div id="modal-container" class="modal-overlay hidden">
+    <div class="modal-card" id="modal-card">
+      <header class="modal-header">
+        <h3 id="modal-title">Título Modal</h3>
+        <button id="modal-close-btn" class="btn-icon modal-close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body" id="modal-body">
+        <!-- Dynamic modal content -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- JavaScript Modules -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

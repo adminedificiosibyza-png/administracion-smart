@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" role="img" aria-label="EdificiosPro">
+  <rect width="560" height="560" rx="84" fill="#000000"/>
+  <g transform="translate(0 60)" fill="none" stroke="#ffffff" stroke-width="17" stroke-linejoin="miter" stroke-linecap="butt">
+    <!-- edificio izquierdo -->
+    <path d="M90 412 V254 L168 182 V412"/>
+    <!-- edificio central (contorno) -->
+    <path d="M210 412 V134 L326 44 V412"/>
+    <!-- edificio derecho -->
+    <path d="M358 412 V206 L446 284 V412"/>
+  </g>
+  <g transform="translate(0 60)" fill="#ffffff" stroke="none">
+    <!-- cuerpo interior del edificio central -->
+    <polygon points="248,174 292,210 292,412 248,412"/>
+    <!-- sol -->
+    <circle cx="412" cy="142" r="38"/>
+  </g>
+</svg>
