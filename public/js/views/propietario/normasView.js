@@ -54,7 +54,7 @@ function renderContent(container, { intro, categories }, buildingName, ctx = nul
 
   container.querySelector('#btn-download-pdf')?.addEventListener('click', async (e) => {
     if (!ctx) {
-      alertDialog({ title: 'Descarga no disponible', message: 'La descarga del PDF solo está disponible con Supabase conectado.' });
+      alertDialog({ title: 'Descarga no disponible', message: 'La descarga del PDF no está disponible en este momento. Inténtelo más tarde o comuníquese con la administración.' });
       return;
     }
     const btn = e.currentTarget;

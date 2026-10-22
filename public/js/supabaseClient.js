@@ -1,6 +1,6 @@
 /* Supabase Client Integration & Fallback Layer */
 import { CONFIG } from './config.js';
-import { friendlyError } from './ui/errors.js';
+import { friendlyError, connectionNotice, probeConnectivity } from './ui/errors.js';
 
 let supabaseClient = null;
 
@@ -21,14 +21,18 @@ async function systemFetch(input, init) {
     res = await fetch(input, init);
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
-    return fail(503, friendlyError('Failed to fetch').message);
+    // Se averigua si el problema es el internet del usuario o el servidor, y el texto se adapta a quien lo ve
+    const kind = await probeConnectivity();
+    const n = connectionNotice(kind);
+    if (kind === 'server_down') console.warn('Sin respuesta del servidor de datos. Si el proyecto gratuito de Supabase se pausó por inactividad, restáurelo en supabase.com (Restore project).');
+    return fail(503, `${n.title}. ${n.message}`);
   }
   if (res.ok || url.includes('/functions/v1/')) return res;   // la función admin-users ya responde con sus propios mensajes
 
   // Servidor caído o pausado: respuesta sin JSON útil
   let text = '';
   try { text = await res.clone().text(); } catch { /* sin cuerpo */ }
-  if (res.status >= 502 || res.status === 540) return fail(503, friendlyError('503').message);
+  if (res.status >= 502 || res.status === 540) { const n = connectionNotice('server_down'); return fail(503, `${n.title}. ${n.message}`); }
 
   // Errores técnicos con JSON: se reescribe el texto si es reconocible
   try {
@@ -82,61 +86,5 @@ export async function sendMagicLinkOrOTP(email, phone) {
   }
 }
 
-/**
- * Validate and save Supabase credentials atomically.
- * Rules:
- *  - Both url and key must be non-empty strings.
- *  - url must match https://<ref>.supabase.co (HTTPS, supabase.co domain).
- *  - Only writes to localStorage when BOTH fields are valid — never partially.
- *  - Never overwrites existing valid config if new input fails validation.
- *  - Returns { ok: true } on success (and triggers reload) or
- *    { ok: false, error: string } on failure so callers can show inline errors.
- */
-export function saveSupabaseConfig(url, key) {
-  const trimmedUrl = (url || '').trim();
-  const trimmedKey = (key || '').trim();
-
-  // Validate presence of both fields
-  if (!trimmedUrl && !trimmedKey) {
-    return { ok: false, error: 'Debes ingresar la Project URL y la Anon Key de tu proyecto Supabase.' };
-  }
-  if (!trimmedUrl) {
-    return { ok: false, error: 'La Project URL no puede estar vacía.' };
-  }
-  if (!trimmedKey) {
-    return { ok: false, error: 'La Publishable/Anon Key no puede estar vacía.' };
-  }
-
-  // Validate URL format: must be https://<anything>.supabase.co
-  const supabaseUrlPattern = /^https:\/\/[a-zA-Z0-9-]+\.supabase\.co\/?$/;
-  if (!supabaseUrlPattern.test(trimmedUrl)) {
-    return {
-      ok: false,
-      error: 'La URL no es válida. Debe tener el formato: https://tu-proyecto.supabase.co'
-    };
-  }
-
-  // Validate key format — accept both formats:
-  //   • Legacy anon/JWT key:   starts with "eyJ"          (e.g. eyJhbGciOiJI...)
-  //   • New Publishable key:   starts with "sb_publishable_" (e.g. sb_publishable_abc123...)
-  // Explicitly reject service_role / secret keys (sb_secret_ prefix).
-  if (trimmedKey.startsWith('sb_secret_')) {
-    return {
-      ok: false,
-      error: 'No uses la Secret/Service Role key en el frontend. Usa únicamente la Publishable key (sb_publishable_...) o la Anon key (eyJ...).'
-    };
-  }
-  const isValidKey = trimmedKey.startsWith('eyJ') || trimmedKey.startsWith('sb_publishable_');
-  if (!isValidKey) {
-    return {
-      ok: false,
-      error: 'La key no parece válida. Debe empezar con "eyJ..." (Anon key) o "sb_publishable_..." (Publishable key).'
-    };
-  }
-
-  // All validations passed — write both atomically and reload
-  window.localStorage.setItem('VITE_SUPABASE_URL', trimmedUrl);
-  window.localStorage.setItem('VITE_SUPABASE_ANON_KEY', trimmedKey);
-  window.location.reload();
-  return { ok: true };
-}
+// Limpieza: valores que versiones anteriores guardaban en el navegador y ya no se usan
+try { window.localStorage.removeItem('VITE_SUPABASE_URL'); window.localStorage.removeItem('VITE_SUPABASE_ANON_KEY'); } catch { /* sin acceso al almacenamiento */ }

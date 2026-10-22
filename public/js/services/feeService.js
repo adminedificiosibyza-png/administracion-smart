@@ -375,7 +375,7 @@ export const feeService = {
   async _requireSession() {
     const { data } = await supabase.auth.getSession();
     if (!data || !data.session) {
-      throw new Error('No hay una sesión iniciada en Supabase. Usa "Acceso Supabase / OTP", abre el enlace que llega al correo de la administradora y vuelve a esta pantalla.');
+      throw new Error('Su sesión venció. Cierre sesión, vuelva a ingresar con su usuario y contraseña y repita la operación.');
     }
   },
 

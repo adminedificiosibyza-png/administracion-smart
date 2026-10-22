@@ -378,7 +378,7 @@ export function renderAdminCobranza() {
       const errBox = document.getElementById('gen-error');
       const monthValue = currentValue();
       if (!/^\d{4}-\d{2}$/.test(monthValue)) { errBox.textContent = 'Elija un mes y un año válidos.'; errBox.hidden = false; return; }
-      const period = `-01`;
+      const period = `${monthValue}-01`;
       btn.disabled = true;
       errBox.hidden = true;
       try {

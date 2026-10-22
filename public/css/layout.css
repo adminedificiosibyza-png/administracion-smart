@@ -503,3 +503,19 @@ input[type="date"], input[type="time"], input[type="month"] {
 }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; }
 .form-group { min-width: 0; }
+
+/* ---------- Pantalla de carga inicial ---------- */
+#boot-screen { display: none; }
+body.booting #app, body.booting #login-root { display: none !important; }
+body.booting #boot-screen {
+  display: flex; position: fixed; inset: 0; z-index: 9999;
+  flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+  background: var(--bg-dark); color: var(--text-muted); font-size: 0.9rem;
+}
+.boot-logo { width: 64px; height: 64px; border-radius: 16px; box-shadow: var(--shadow-md); }
+.boot-spinner {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 3px solid var(--border-color); border-top-color: var(--primary);
+  animation: boot-spin 0.8s linear infinite;
+}
+@keyframes boot-spin { to { transform: rotate(360deg); } }

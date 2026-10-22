@@ -25,7 +25,14 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/dashboard.css">
 </head>
-<body class="theme-dark">
+<body class="theme-dark booting">
+  <!-- Pantalla de carga: evita ver el panel de demostración un instante antes del inicio de sesión -->
+  <div id="boot-screen" aria-live="polite">
+    <img src="assets/logo.svg" alt="" class="boot-logo">
+    <div class="boot-spinner"></div>
+    <span>Cargando...</span>
+  </div>
+
   <!-- Pantalla de ingreso (solo con Supabase conectado y sin sesión) -->
   <div id="login-root" class="login-root" hidden></div>
 

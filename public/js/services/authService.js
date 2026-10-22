@@ -2,7 +2,8 @@
 import { store } from '../store.js';
 import { supabase, isSupabaseConnected, sendMagicLinkOrOTP } from '../supabaseClient.js';
 import { loginEmailFor } from '../utils/username.js';
-import { friendlyError, CONNECTION_TITLE, CONNECTION_MESSAGE } from '../ui/errors.js';
+import { friendlyMessage } from '../ui/errors.js';
+import { setErrorAudience } from '../ui/errorAudience.js';
 
 const ACTIVE_UNIT_KEY = 'parke10_active_unit';
 
@@ -41,8 +42,9 @@ export const authService = {
 
   async loadContext() {
     const { data, error } = await supabase.rpc('get_my_context');
-    if (error) throw new Error(`No se pudo cargar tu perfil: ${error.message}`);
+    if (error) throw new Error(friendlyMessage(error));
     context = data || null;
+    setErrorAudience(!!(context && context.is_superadmin));   // define cuánto detalle técnico puede ver en los errores
     return context;
   },
 
@@ -72,9 +74,7 @@ export const authService = {
         throw new Error('Demasiados intentos. Espere unos minutos e inténtelo de nuevo.');
       }
       // Servidor sin respuesta (internet o proyecto pausado): no es una clave incorrecta
-      if (error.status >= 500 || error.code === 'connection_error' || friendlyError(error).title === CONNECTION_TITLE) {
-        throw new Error(`${CONNECTION_TITLE}. ${CONNECTION_MESSAGE}`);
-      }
+      if (error.status >= 500 || error.code === 'connection_error') throw new Error(friendlyMessage(error));
       throw new Error('Usuario o contraseña incorrectos.');
     }
 
@@ -88,6 +88,7 @@ export const authService = {
 
   async signOut() {
     context = null;
+    setErrorAudience(false);
     try { sessionStorage.removeItem(ACTIVE_UNIT_KEY); } catch { /* sin acceso a sessionStorage */ }
     if (isSupabaseConnected()) await supabase.auth.signOut();
   },

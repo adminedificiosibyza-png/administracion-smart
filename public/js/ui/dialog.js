@@ -61,7 +61,7 @@ export function confirmDialog({ title = 'Confirmar', message, confirmText = 'Ace
 /** Informa algo (éxito, aviso o error). */
 export function alertDialog({ title, message, tone = 'info', buttonText = 'Entendido' }) {
   // Los errores se explican en lenguaje claro (conexión caída, proyecto pausado, permisos, etc.)
-  if (tone === 'danger' || tone === 'warning') {
+  if ((tone === 'danger' || tone === 'warning') && message) {
     const f = friendlyError(message);
     if (f.matched) { message = f.message; title = f.title; }
   }

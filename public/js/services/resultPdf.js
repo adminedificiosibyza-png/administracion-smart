@@ -72,9 +72,14 @@ async function renderPdf({ title, subtitle, info, head, body, colStyles, totals,
     columnStyles: colStyles, didParseCell: colorize, didDrawPage: (d) => { if (d.pageNumber > 1) compactHeader(); } });
 
   // Tabla adicional (resumen por edificio), si hay
+  // Alturas aproximadas (mm) para mantener juntos el resumen por edificio, los totales y las notas
+  const ROW_H = 7.6;
+  const totalsH = 8 + 16 + (cautions ? cautions.length * 5 : 0) + 4;
   if (extra) {
     let y = doc.lastAutoTable.finalY + 8;
-    if (y + 30 > H - BOTTOM) { doc.addPage(); compactHeader(); y = 24; }
+    // Si el resumen por edificio y los totales no caben juntos en lo que queda de la hoja, pasan JUNTOS a la hoja siguiente
+    const blockH = 8 + (extra.body.length + 1) * ROW_H + totalsH;
+    if (y + blockH > H - BOTTOM) { doc.addPage(); compactHeader(); y = 24; }
     doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(...TEXT).text(extra.title, M, y);
     doc.autoTable({ startY: y + 2, head: [extra.head], body: extra.body, margin: { top: 24, bottom: BOTTOM, left: M, right: M }, theme: 'plain',
       rowPageBreak: 'avoid', styles: baseStyles, headStyles, alternateRowStyles: { fillColor: BG_ALT }, columnStyles: extra.colStyles,
@@ -84,7 +89,8 @@ async function renderPdf({ title, subtitle, info, head, body, colStyles, totals,
 
   // Totales al final: una sola fila, fondo azul con letras blancas
   let y = doc.lastAutoTable.finalY + 8;
-  if (y + 20 > H - BOTTOM) { doc.addPage(); compactHeader(); y = 24; }
+  // Los totales y sus notas nunca se parten: si no caben completos, pasan a la hoja siguiente
+  if (y + totalsH - 4 > H - BOTTOM) { doc.addPage(); compactHeader(); y = 24; }
   doc.autoTable({ startY: y, head: [totals.map(t => t[0])], body: [totals.map(t => t[1])],
     margin: { top: 24, bottom: BOTTOM, left: M, right: M }, theme: 'plain', rowPageBreak: 'avoid',
     styles: { ...baseStyles, halign: 'center', lineWidth: 0 },

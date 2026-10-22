@@ -165,6 +165,7 @@ export async function openExpenseForm({ expense, buildings, defaultBuildingId, a
   watcher.observe(overlay, { attributes: true, attributeFilter: ['class'] });
   const root = modal.$('exp-root');
 
+  let sugg = { prov: '', amt: '' };   // últimos valores sugeridos por el servicio (para no pisar lo que se cambió a mano)
   // Se arma en cada dibujo para que el botón marcado siempre sea el tipo elegido (antes quedaba fijo y no dejaba cambiar)
   const scopeRadios = () => editing ? '' : `
     <div class="form-group"><label class="form-label">Tipo de gasto</label>
@@ -254,11 +255,15 @@ export async function openExpenseForm({ expense, buildings, defaultBuildingId, a
     }));
     root.querySelector('#exp-building')?.addEventListener('change', async (e) => { buildingId = e.target.value; await loadServicesFor(buildingId); draw(); });
     root.querySelector('#exp-service')?.addEventListener('change', (e) => {
-      const o = e.target.selectedOptions[0]; if (!o || !o.value) return;
-      const cat = root.querySelector('#exp-category'); if (!cat.value) cat.value = o.dataset.cat || '';
-      const prov = root.querySelector('#exp-provider'); if (!prov.value && o.dataset.prov) prov.value = o.dataset.prov;
-      const amt = root.querySelector('#exp-amount'); if (!amt.value && o.dataset.amt) amt.value = o.dataset.amt;
-      const concept = root.querySelector('#exp-concept'); if (!concept.value) concept.value = o.textContent.replace(' (inactivo)', '');
+      const o = e.target.selectedOptions[0]; if (!o || !o.value) return;   // "Sin servicio": no se borra lo escrito
+      // El concepto y la categoría siempre siguen al servicio elegido
+      root.querySelector('#exp-category').value = o.dataset.cat || '';
+      root.querySelector('#exp-concept').value = o.textContent.replace(' (inactivo)', '');
+      // Proveedor e importe estimado: se actualizan salvo que la persona ya los haya cambiado a mano
+      const prov = root.querySelector('#exp-provider');
+      if (o.dataset.prov && (!prov.value || prov.value === sugg.prov)) { prov.value = o.dataset.prov; sugg.prov = o.dataset.prov; }
+      const amt = root.querySelector('#exp-amount');
+      if (o.dataset.amt && (!amt.value || amt.value === sugg.amt)) { amt.value = o.dataset.amt; sugg.amt = o.dataset.amt; refreshSum(); }
     });
     root.querySelectorAll('[data-alloc-check]').forEach(c => c.addEventListener('change', () => {
       const inp = root.querySelector(`[data-alloc-amt="${c.dataset.allocCheck}"]`);

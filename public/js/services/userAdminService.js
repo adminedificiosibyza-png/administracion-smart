@@ -1,12 +1,12 @@
 /* Gestión de usuarios y accesos (solo superadmin, solo con Supabase conectado) */
 import { supabase, isSupabaseConnected } from '../supabaseClient.js';
-import { CONNECTION_TITLE, CONNECTION_MESSAGE } from '../ui/errors.js';
+import { connectionNotice } from '../ui/errors.js';
 
 // La función admin-users responde errores con JSON; supabase-js los envuelve en error.context
 async function invoke(body) {
   const { data, error } = await supabase.functions.invoke('admin-users', { body });
   if (!error) return data;
-  if (error.name === 'FunctionsFetchError') throw new Error(`${CONNECTION_TITLE}. ${CONNECTION_MESSAGE}`);
+  if (error.name === 'FunctionsFetchError') { const n = connectionNotice(); throw new Error(`${n.title}. ${n.message}`); }
 
   let payload = null;
   try { payload = await error.context.json(); } catch { /* sin cuerpo */ }

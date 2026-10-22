@@ -13,9 +13,9 @@ export const CONFIG = {
   
   // Proyecto de Supabase. La clave "publishable" es pública por diseño (la protegen las reglas RLS).
   // NUNCA escribir aquí la clave service_role / sb_secret_.
-  // Si el navegador tiene otra URL/clave guardada (modal de acceso Supabase), esa tiene prioridad.
-  SUPABASE_URL: window.localStorage.getItem('VITE_SUPABASE_URL') || 'https://ykiikobtsahhkmatpqua.supabase.co',
-  SUPABASE_ANON_KEY: window.localStorage.getItem('VITE_SUPABASE_ANON_KEY') || 'sb_publishable_3XQtKzg-RH8jfHHapjq1YA_f3fyVar9',
+  // Fijos: no se pueden cambiar desde el navegador. La CSP de public/_headers solo permite este proyecto.
+  SUPABASE_URL: 'https://ykiikobtsahhkmatpqua.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_3XQtKzg-RH8jfHHapjq1YA_f3fyVar9',
   
   // Dominio SOLO para fabricar el correo interno de inicio de sesión (no se envía nada ahí).
   // Debe coincidir con el secreto LOGIN_EMAIL_DOMAIN de la función admin-users.

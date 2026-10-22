@@ -1,12 +1,13 @@
 /* Main Application Controller & View Router */
 import { store } from './store.js';
 import { authService } from './services/authService.js';
-import { saveSupabaseConfig, isSupabaseConnected } from './supabaseClient.js';
+import { isSupabaseConnected } from './supabaseClient.js';
 import { dataService } from './services/dataService.js';
 import { reservationService } from './services/reservationService.js';
 import { renderLogin } from './views/loginView.js';
 import { alertDialog } from './ui/dialog.js';
 import { friendlyError } from './ui/errors.js';
+import { isAdminAudience } from './ui/errorAudience.js';
 
 // Para los pocos botones con HTML directo (onclick) que necesitan mostrar un aviso del sistema
 window.appAlert = alertDialog;
@@ -68,6 +69,12 @@ class AppController {
     document.body.classList.add('logged-out');
     root.hidden = false;
     renderLogin(root, () => window.location.reload()); // recarga limpia con la sesión ya iniciada
+    this.finishBoot();
+  }
+
+  /** Quita la pantalla de carga: ya se sabe si corresponde el inicio de sesión o el panel. */
+  finishBoot() {
+    document.body.classList.remove('booting');
   }
 
   // Con sesión real: el rol sale de la cuenta (no hay selector de vista) y aparece "Cerrar sesión"
@@ -128,9 +135,11 @@ class AppController {
     this.updateDataSourceBadge();
     this.updateBuildingChrome();
     this.updateBell();
-    this.renderSidebarNav();
+    const navReady = this.renderSidebarNav();
     this.renderMobileBottomNav();
-    this.renderCurrentView();
+    const viewReady = this.renderCurrentView();
+    // El panel se muestra cuando la primera pantalla ya está lista (o falló), nunca a medias
+    Promise.allSettled([navReady, viewReady]).then(() => this.finishBoot());
 
     // Subscribe to state changes
     store.subscribe(() => {
@@ -780,6 +789,7 @@ class AppController {
       if (isStale()) return;
       console.error('❌ Error al renderizar la vista:', err);
       const friendly = friendlyError(err);
+      const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       if (titleEl) titleEl.textContent = 'Error al Cargar la Vista';
 
       // Clean Error State UI (Point 10 requirement)
@@ -788,8 +798,8 @@ class AppController {
           <h3 style="color: var(--status-danger); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
             <i data-lucide="alert-octagon"></i> Estamos teniendo problemas para cargar esta vista.
           </h3>
-          <p style="margin-bottom: 1rem; white-space: pre-line;">${friendly.title ? friendly.title + '. ' : ''}${friendly.message}</p>
-          ${friendly.matched ? `<details style="margin-bottom: 1rem; font-size: 0.8rem; color: var(--text-dim);"><summary>Detalle técnico</summary><code>${err.message}</code></details>` : ''}
+          <p style="margin-bottom: 1rem; white-space: pre-line;">${escHtml(friendly.title ? friendly.title + '. ' : '')}${escHtml(friendly.message)}</p>
+          ${(friendly.matched && isAdminAudience()) ? `<details style="margin-bottom: 1rem; font-size: 0.8rem; color: var(--text-dim);"><summary>Detalle técnico</summary><code>${escHtml(err.message)}</code></details>` : ''}
           <button class="btn btn-primary btn-sm" id="btn-retry-render">
             <i data-lucide="refresh-cw"></i> Reintentar Cargar
           </button>
@@ -828,23 +838,6 @@ class AppController {
         <!-- Inline feedback zone: B (MOCK warning) and C (Supabase error) -->
         <div id="otp-msg" style="display:none; margin-top: 0.75rem; padding: 0.6rem 0.9rem; border-radius: var(--radius-md); font-size: 0.85rem;"></div>
       </form>
-
-      <form id="supabase-config-form">
-        <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--accent-cyan);">Configurar Credenciales de Supabase Proyecto Live</h4>
-        <div class="form-group">
-          <label class="form-label">Project URL</label>
-          <input type="text" id="sp-url-input" class="form-control" placeholder="https://tu-proyecto.supabase.co" value="${localStorage.getItem('VITE_SUPABASE_URL') || ''}">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Publishable / Anon Key</label>
-          <input type="password" id="sp-key-input" class="form-control" placeholder="eyJhbGciOiJIUz..." value="${localStorage.getItem('VITE_SUPABASE_ANON_KEY') || ''}">
-        </div>
-        <!-- Inline feedback zone: A (validation error) -->
-        <div id="config-msg" style="display:none; margin-top: 0.5rem; padding: 0.6rem 0.9rem; border-radius: var(--radius-md); font-size: 0.85rem;"></div>
-        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
-          <button type="submit" class="btn btn-secondary btn-sm"><i data-lucide="save"></i> Guardar Variables Live</button>
-        </div>
-      </form>
     `;
 
     modalOverlay.classList.remove('hidden');
@@ -875,7 +868,7 @@ class AppController {
       if (!isSupabaseConnected()) {
         showMsg(
           'otp-msg',
-          'Aviso: La aplicacion esta en modo demo (MOCK). Para enviar un codigo OTP real, primero configura las credenciales de tu proyecto Supabase en el formulario de abajo.',
+          'Aviso: La aplicacion esta en modo demo (MOCK). Para enviar un codigo OTP real, el envio de codigos no esta disponible.',
           true
         );
         return;
@@ -917,22 +910,6 @@ class AppController {
         });
     };
 
-    // ── A: Config form ─────────────────────────────────────────────────────
-    document.getElementById('supabase-config-form').onsubmit = (e) => {
-      e.preventDefault();
-      clearMsg('config-msg');
-
-      const url = document.getElementById('sp-url-input').value;
-      const key = document.getElementById('sp-key-input').value;
-
-      // saveSupabaseConfig returns { ok, error } — only reloads when ok:true
-      const result = saveSupabaseConfig(url, key);
-      if (result && !result.ok) {
-        showMsg('config-msg', result.error, true);
-      }
-      // On ok:true the function already triggered window.location.reload()
-    };
-
     if (window.lucide) window.lucide.createIcons();
   }
 }
@@ -940,7 +917,12 @@ class AppController {
 // Robust execution trigger (Solves "Cargando..." issue when DOM is ready before or during module load)
 function startApp() {
   const app = new AppController();
-  app.init();
+  // Si algo se cuelga, la pantalla de carga no se queda para siempre
+  const safety = setTimeout(() => app.finishBoot(), 15000);
+  Promise.resolve(app.init()).catch(err => console.error('❌ Error al iniciar:', err)).finally(() => {
+    // En el modo con sesión, start() ya retira la pantalla de carga al terminar de armar el panel
+    if (document.body.classList.contains('logged-out')) clearTimeout(safety);
+  });
 }
 
 if (document.readyState === 'loading') {
