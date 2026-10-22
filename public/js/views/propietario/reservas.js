@@ -243,11 +243,11 @@ export async function renderPropietarioReservas() {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label class="form-label">Propietario / Residente</label>
-                <input type="text" class="form-control" value="${user.name}" readonly>
+                <input type="text" class="form-control" value="${esc(user.name)}" readonly>
               </div>
               <div class="form-group">
                 <label class="form-label">Departamento</label>
-                <input type="text" class="form-control" value="${user.unit}" readonly>
+                <input type="text" class="form-control" value="${esc(user.unit)}" readonly>
               </div>
               <div class="form-group">
                 <label class="form-label">Teléfono de contacto</label>
@@ -426,11 +426,11 @@ function showConfirmationModal(reservation) {
 
       <div style="text-align: left; background: var(--bg-card); padding: 1rem; border-radius: var(--radius-sm); margin-top: 1rem; font-size: 0.9rem;">
         <p style="margin-bottom: 0.35rem;"><strong>Edificio:</strong> PARKE10</p>
-        <p style="margin-bottom: 0.35rem;"><strong>Área:</strong> ${reservation.area_name}</p>
+        <p style="margin-bottom: 0.35rem;"><strong>Área:</strong> ${esc(reservation.area_name)}</p>
         <p style="margin-bottom: 0.35rem;"><strong>Fecha:</strong> ${formatDate(reservation.date)}</p>
         <p style="margin-bottom: 0.35rem;"><strong>Horario:</strong> ${to12h(reservation.start_time)} – ${to12h(reservation.end_time)}</p>
-        <p style="margin-bottom: 0.35rem;"><strong>Departamento:</strong> ${reservation.unit_code}</p>
-        <p><strong>Propietario:</strong> ${reservation.owner_name}</p>
+        <p style="margin-bottom: 0.35rem;"><strong>Departamento:</strong> ${esc(reservation.unit_code)}</p>
+        <p><strong>Propietario:</strong> ${esc(reservation.owner_name)}</p>
       </div>
     </div>
 

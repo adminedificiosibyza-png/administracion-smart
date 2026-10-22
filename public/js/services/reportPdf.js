@@ -3,7 +3,12 @@
 
 export const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
 export const AUTOTABLE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
-const GREEN = [30, 58, 95];          // azul oscuro #1e3a5f (color principal del documento)
+// Huellas SRI: el navegador rechaza el archivo si el CDN lo entrega alterado
+const SCRIPT_INTEGRITY = {
+  [JSPDF_URL]: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk',
+  [AUTOTABLE_URL]: 'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3'
+};
+const GREEN = [30, 58, 95];        // azul oscuro #1e3a5f (color principal del documento)
 const GREEN_SOFT = [232, 238, 246];  // azul muy suave #e8eef6
 const BG_ALT = [245, 247, 250];      // #f5f7fa
 const TEXT = [45, 52, 64];           // #2d3440
@@ -26,6 +31,7 @@ export function loadScript(url) {
     loaded.set(url, new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = url;
+      if (SCRIPT_INTEGRITY[url]) { s.integrity = SCRIPT_INTEGRITY[url]; s.crossOrigin = 'anonymous'; }
       s.onload = resolve;
       s.onerror = () => { loaded.delete(url); reject(new Error('No se pudo cargar la biblioteca de PDF. Revise su conexión a internet.')); };
       document.head.appendChild(s);

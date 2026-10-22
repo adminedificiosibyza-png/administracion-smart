@@ -155,18 +155,18 @@ export async function renderPropietarioPerfil() {
           <div style="width: 72px; height: 72px; border-radius: var(--radius-full); background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; font-size: 1.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem auto;">
             ${user.name ? user.name.split(' ').map(n=>n[0]).join('').substring(0,2) : 'CM'}
           </div>
-          <h3 style="font-size: 1.2rem; font-weight: 700;">${user.name}</h3>
+          <h3 style="font-size: 1.2rem; font-weight: 700;">${esc(user.name)}</h3>
           <span class="badge badge-success" style="margin-top: 0.25rem;">Propietario Titular</span>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
           <div>
             <span style="color: var(--text-dim); display: block;">Correo electrónico:</span>
-            <strong>${user.email || 'No registrado'}</strong>
+            <strong>${esc(user.email || 'No registrado')}</strong>
           </div>
           <div>
             <span style="color: var(--text-dim); display: block;">Teléfono registrado:</span>
-            <strong>${user.phone || 'No registrado'}</strong>
+            <strong>${esc(user.phone || 'No registrado')}</strong>
           </div>
           <div>
             <span style="color: var(--text-dim); display: block;">Acceso al portal:</span>

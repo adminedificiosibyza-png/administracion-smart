@@ -1,12 +1,22 @@
 /* Reactive State Store & Persistence Layer */
 import { INITIAL_SEED, generateFeeHistory } from './mockData.js';
+import { isSupabaseConnected } from './supabaseClient.js';
+
+// Con el sistema real (Supabase) no se guarda nada de la demostración en el navegador
+const LIVE = isSupabaseConnected();
+const DEMO_KEYS = ['parke10_app_data', 'parke10_role', 'parke10_unit'];
+const demoStorage = {
+  get(key) { if (LIVE) return null; try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { if (LIVE) return; try { localStorage.setItem(key, value); } catch { /* sin almacenamiento */ } }
+};
+if (LIVE) { try { DEMO_KEYS.forEach(k => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ } }
 
 class AppStore {
   constructor() {
     this.listeners = [];
     
     // Load state from LocalStorage or initialize with seed
-    const savedData = localStorage.getItem('parke10_app_data');
+    const savedData = demoStorage.get('parke10_app_data');
     if (savedData) {
       try {
         this.state = JSON.parse(savedData);
@@ -22,8 +32,8 @@ class AppStore {
     this.migrateRules();
     this.migrateFees();
 
-    this.currentRole = localStorage.getItem('parke10_role') || 'propietario'; // 'propietario' or 'administradora'
-    this.currentUnitCode = localStorage.getItem('parke10_unit') || '502';
+    this.currentRole = demoStorage.get('parke10_role') || 'propietario'; // 'propietario' or 'administradora'
+    this.currentUnitCode = demoStorage.get('parke10_unit') || '502';
     this.currentView = this.currentRole === 'propietario' ? 'propietario-dashboard' : 'admin-dashboard';
   }
 
@@ -72,7 +82,7 @@ class AppStore {
   }
 
   saveState() {
-    localStorage.setItem('parke10_app_data', JSON.stringify(this.state));
+    demoStorage.set('parke10_app_data', JSON.stringify(this.state));
     this.notify();
   }
 
@@ -84,7 +94,7 @@ class AppStore {
   // Role Management
   setRole(role) {
     this.currentRole = role;
-    localStorage.setItem('parke10_role', role);
+    demoStorage.set('parke10_role', role);
     this.currentView = role === 'propietario' ? 'propietario-dashboard' : 'admin-dashboard';
     this.notify();
   }
@@ -92,7 +102,7 @@ class AppStore {
   // Unit Selector Management
   setUnitCode(unitCode) {
     this.currentUnitCode = unitCode;
-    localStorage.setItem('parke10_unit', unitCode);
+    demoStorage.set('parke10_unit', unitCode);
     this.notify();
   }
 

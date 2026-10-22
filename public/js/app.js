@@ -11,6 +11,8 @@ import { isAdminAudience } from './ui/errorAudience.js';
 
 // Para los pocos botones con HTML directo (onclick) que necesitan mostrar un aviso del sistema
 window.appAlert = alertDialog;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 import { renderAdminUsuarios } from './views/admin/usuariosView.js';
 import { renderAdminEdificios } from './views/admin/edificiosView.js';
 import { renderAdminHome } from './views/admin/edificiosHomeView.js';
@@ -273,8 +275,8 @@ class AppController {
       <div class="switcher-title">Mis departamentos</div>
       ${assignments.map(a => `
         <button type="button" class="switcher-item ${current && a.unit_id === current.unit_id ? 'current' : ''}" data-unit="${a.unit_id}">
-          <span class="switcher-avatar" style="background:${a.brand_color || '#4f7609'};">${(a.building_name || '?').trim()[0].toUpperCase()}</span>
-          <span class="switcher-name">Dpto ${a.unit_code} · ${a.building_name}<small>${relation[a.relation] || a.relation}</small></span>
+          <span class="switcher-avatar" style="background:${esc(a.brand_color || '#4f7609')};">${esc((a.building_name || '?').trim()[0].toUpperCase())}</span>
+          <span class="switcher-name">Dpto ${esc(a.unit_code)} · ${esc(a.building_name)}<small>${esc(relation[a.relation] || a.relation)}</small></span>
           ${current && a.unit_id === current.unit_id ? '<i data-lucide="check"></i>' : ''}
         </button>`).join('')}`;
     document.body.appendChild(menu);
@@ -312,8 +314,8 @@ class AppController {
       <div class="switcher-title">Cambiar de edificio</div>
       ${activeBuilding.list().map(b => `
         <button type="button" class="switcher-item ${current && b.id === current.id ? 'current' : ''}" data-id="${b.id}">
-          <span class="switcher-avatar" style="background:${b.brand_color || '#4f7609'};">${(b.name || '?').trim()[0].toUpperCase()}</span>
-          <span class="switcher-name">${b.name}<small>${b.code}</small></span>
+          <span class="switcher-avatar" style="background:${esc(b.brand_color || '#4f7609')};">${esc((b.name || '?').trim()[0].toUpperCase())}</span>
+          <span class="switcher-name">${esc(b.name)}<small>${esc(b.code)}</small></span>
           ${current && b.id === current.id ? '<i data-lucide="check"></i>' : ''}
         </button>`).join('')}
       <button type="button" class="switcher-item switcher-all" data-all="1">
