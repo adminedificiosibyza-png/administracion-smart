@@ -519,3 +519,10 @@ body.booting #boot-screen {
   animation: boot-spin 0.8s linear infinite;
 }
 @keyframes boot-spin { to { transform: rotate(360deg); } }
+
+/* Campo de contraseña con botón para mostrar u ocultar */
+.pw-field { position: relative; }
+.pw-field .form-control { padding-right: 2.75rem; }
+.pw-toggle { position: absolute; top: 50%; right: 0.5rem; transform: translateY(-50%); background: none; border: 0; padding: 0.35rem; cursor: pointer; color: var(--text-dim); display: flex; align-items: center; }
+.pw-toggle:hover { color: var(--primary); }
+.pw-toggle i, .pw-toggle svg { width: 18px; height: 18px; }

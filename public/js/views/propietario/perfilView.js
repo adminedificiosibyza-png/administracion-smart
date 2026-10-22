@@ -2,6 +2,8 @@
 import { authService } from '../../services/authService.js';
 import { buildingService } from '../../services/buildingService.js';
 import { supabase, isSupabaseConnected } from '../../supabaseClient.js';
+import { alertDialog } from '../../ui/dialog.js';
+import { openAppModal } from '../../ui/credentials.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const RELATIONS = { PROPIETARIO: 'Propietario', INQUILINO: 'Inquilino', OTRO: 'Otro' };
@@ -73,7 +75,60 @@ async function renderLivePerfil() {
         </ul>
         ${ctx.assignments.length > 1 ? '<p class="cell-note" style="margin-top:0.75rem;">Para cambiar de departamento, use la tarjeta de la barra lateral.</p>' : ''}` : '<p>Sin departamentos asignados.</p>'}
       </div>
+
+      <div class="card">
+        <h3 class="card-title" style="margin-bottom: 1rem; color: var(--primary);"><i data-lucide="lock"></i> Cambiar mi contraseña</h3>
+        <p style="font-size: 0.9rem; margin-bottom: 1rem;">Puede cambiar su contraseña de ingreso cuando lo desee.</p>
+        <button type="button" class="btn btn-primary" id="btn-open-change-password"><i data-lucide="lock"></i> Cambiar contraseña</button>
+      </div>
     </div>`;
+
+  container.querySelector('#btn-open-change-password').addEventListener('click', () => {
+    const modal = openAppModal('<i data-lucide="lock" style="color: var(--primary);"></i> Cambiar mi contraseña', `
+      <form id="form-change-password" autocomplete="off">
+        <div class="form-group">
+          <label class="form-label" for="pw-current">Contraseña actual</label>
+          <div class="pw-field"><input type="password" id="pw-current" class="form-control" autocomplete="current-password" required><button type="button" class="pw-toggle" data-target="pw-current" aria-label="Mostrar contraseña"><i data-lucide="eye"></i></button></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pw-new">Nueva contraseña (mínimo 8 caracteres)</label>
+          <div class="pw-field"><input type="password" id="pw-new" class="form-control" autocomplete="new-password" minlength="8" required><button type="button" class="pw-toggle" data-target="pw-new" aria-label="Mostrar contraseña"><i data-lucide="eye"></i></button></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pw-confirm">Repetir nueva contraseña</label>
+          <div class="pw-field"><input type="password" id="pw-confirm" class="form-control" autocomplete="new-password" minlength="8" required><button type="button" class="pw-toggle" data-target="pw-confirm" aria-label="Mostrar contraseña"><i data-lucide="eye"></i></button></div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-change-password">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-change-password"><i data-lucide="save"></i> Guardar contraseña</button>
+        </div>
+      </form>`);
+
+    modal.$('form-change-password').querySelectorAll('.pw-toggle').forEach(btn => btn.addEventListener('click', () => {
+      const input = modal.$(btn.dataset.target);
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+      btn.innerHTML = '<i data-lucide="' + (show ? 'eye-off' : 'eye') + '"></i>';
+      if (window.lucide) window.lucide.createIcons();
+    }));
+    modal.$('btn-cancel-change-password').addEventListener('click', modal.close);
+    modal.$('form-change-password').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = modal.$('btn-change-password');
+      btn.disabled = true;
+      try {
+        await authService.changePassword(modal.$('pw-current').value, modal.$('pw-new').value, modal.$('pw-confirm').value);
+        modal.close();
+        alertDialog({ tone: 'success', title: 'Contraseña actualizada', message: 'Su contraseña se cambió correctamente. Úsela la próxima vez que inicie sesión.' });
+      } catch (err) {
+        alertDialog({ tone: 'warning', title: 'No se pudo cambiar la contraseña', message: err.message });
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    modal.$('pw-current').focus();
+  });
 
   setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 0);
   return container;

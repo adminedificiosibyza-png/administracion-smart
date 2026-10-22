@@ -86,6 +86,33 @@ export const authService = {
     return context;
   },
 
+  /** Cambia la contraseña de la persona con sesión: exige la actual y una nueva de al menos 8 caracteres. */
+  async changePassword(currentPassword, newPassword, confirmPassword) {
+    if (!context) throw new Error('Debe iniciar sesión para cambiar su contraseña.');
+    if (!currentPassword || !newPassword || !confirmPassword) throw new Error('Complete los tres campos.');
+    if (newPassword.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres.');
+    if (newPassword !== confirmPassword) throw new Error('La confirmación no coincide con la nueva contraseña.');
+    if (newPassword === currentPassword) throw new Error('La nueva contraseña debe ser distinta de la actual.');
+
+    // Comprueba la contraseña actual (misma cuenta, no abre otra sesión distinta)
+    const check = await supabase.auth.signInWithPassword({
+      email: loginEmailFor(context.username || context.full_name),
+      password: currentPassword
+    });
+    if (check.error) {
+      if (check.error.status === 429 || /rate/i.test(check.error.message)) throw new Error('Demasiados intentos. Espere unos minutos e inténtelo de nuevo.');
+      if (check.error.status >= 500 || check.error.code === 'connection_error') throw new Error(friendlyMessage(check.error));
+      throw new Error('La contraseña actual no es correcta.');
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      if (/same|different/i.test(error.message)) throw new Error('La nueva contraseña debe ser distinta de la actual.');
+      if (/weak|short|at least|characters/i.test(error.message)) throw new Error('La nueva contraseña es demasiado débil. Use al menos 8 caracteres.');
+      throw new Error(friendlyMessage(error));
+    }
+  },
+
   async signOut() {
     context = null;
     setErrorAudience(false);
