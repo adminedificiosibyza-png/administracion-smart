@@ -4,7 +4,7 @@
 import { loadScript, JSPDF_URL, loadLogo } from './reportPdf.js';
 
 // Adorno de la esquina inferior izquierda (igual para todos los edificios; no lleva datos de ningún edificio)
-const FOOTER_DECORATION = 'assets/letterheads/footer-triangle.svg';
+export const FOOTER_DECORATION = 'assets/letterheads/footer-triangle.svg';
 
 const TEXT = [52, 58, 48];          // #343a30
 const MUTED = [105, 112, 100];      // #697064
@@ -102,7 +102,7 @@ function drawCover(doc, { building, style, logo }) {
   drawBrandLine(doc, cx, 262, true, logo, 'center');
 }
 
-async function rasterizeDecoration(url) {
+export async function rasterizeDecoration(url) {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;

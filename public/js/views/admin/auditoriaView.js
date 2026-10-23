@@ -9,7 +9,8 @@ const PAGE = 100;
 
 const ACTION_LABELS = {
   CREAR_COMUNICADO: 'Comunicado creado', EDITAR_COMUNICADO: 'Comunicado editado', ELIMINAR_COMUNICADO: 'Comunicado eliminado',
-  EDITAR_NORMAS: 'Normas editadas', PUBLICACION_COMUNICADO: 'Comunicado publicado'
+  EDITAR_NORMAS: 'Normas editadas', PUBLICACION_COMUNICADO: 'Comunicado publicado',
+  CREAR_RESERVA_ADMIN: 'Reserva registrada por la administración'
 };
 const actionLabel = a => ACTION_LABELS[a] || String(a || '').replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase());
 

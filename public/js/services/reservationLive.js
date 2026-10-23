@@ -201,6 +201,39 @@ export const reservationAdminApi = {
     if (error) throw rpcError(error);
   },
 
+  /** Departamentos del edificio con las personas que los tienen asignados (titular primero). */
+  async listUnitsWithPeople(buildingId) {
+    const units = await supabase.from('units').select('id, code, floor').eq('building_id', buildingId);
+    if (units.error) throw new Error(`No se pudieron cargar los departamentos: ${units.error.message}`);
+    const ids = units.data.map(u => u.id);
+    const links = ids.length
+      ? await supabase.from('user_units').select('unit_id, user_id, relation').eq('active', true).in('unit_id', ids)
+      : { data: [], error: null };
+    if (links.error) throw new Error(`No se pudieron cargar las asignaciones: ${links.error.message}`);
+    const userIds = [...new Set(links.data.map(l => l.user_id))];
+    const profiles = userIds.length
+      ? await supabase.from('user_profiles').select('id, full_name, phone, is_active').in('id', userIds)
+      : { data: [], error: null };
+    if (profiles.error) throw new Error(`No se pudieron cargar las personas: ${profiles.error.message}`);
+    const byId = new Map(profiles.data.filter(p => p.is_active).map(p => [p.id, p]));
+    const order = { PROPIETARIO: 0, INQUILINO: 1 };
+    return units.data
+      .map(u => ({
+        ...u,
+        people: links.data.filter(l => l.unit_id === u.id && byId.has(l.user_id))
+          .map(l => ({ user_id: l.user_id, relation: l.relation, full_name: byId.get(l.user_id).full_name, phone: byId.get(l.user_id).phone || '' }))
+          .sort((a, b) => (order[a.relation] ?? 2) - (order[b.relation] ?? 2) || a.full_name.localeCompare(b.full_name))
+      }))
+      .sort((a, b) => String(a.code).localeCompare(String(b.code), undefined, { numeric: true }));
+  },
+
+  /** Registra una reserva a nombre de un propietario. Las reglas (horario, cruces, fecha) las valida el servidor. */
+  async createForOwner(payload) {
+    const { data, error } = await supabase.rpc('admin_create_reservation', { p: payload });
+    if (error) throw rpcError(error);
+    return data;
+  },
+
   async countPending(buildingId) {
     const { count, error } = await supabase.from('reservations')
       .select('id', { count: 'exact', head: true })
