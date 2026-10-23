@@ -2,7 +2,7 @@
 import { activeBuilding } from '../../services/activeBuilding.js';
 import { authService } from '../../services/authService.js';
 import { ruleService } from '../../services/ruleService.js';
-import { isSupabaseConnected } from '../../supabaseClient.js';
+import { supabase, isSupabaseConnected } from '../../supabaseClient.js';
 import { OFFICIAL_RULES, RULES_INTRO } from '../../rulesData.js';
 import { confirmDialog, alertDialog } from '../../ui/dialog.js';
 import { openAppModal } from '../../ui/credentials.js';
@@ -160,25 +160,40 @@ export function renderAdminNormas() {
     }
     const modal = openAppModal('<i data-lucide="file-text" style="color: var(--primary);"></i> Descargar normas en PDF', `
       <p style="margin-bottom:1rem; font-size:0.9rem;">Se generará el documento de <strong>${esc(building.name)}</strong> con las normas guardadas, en el orden del editor.</p>
-      <label style="display:flex; gap:0.5rem; align-items:flex-start; margin-bottom:1.25rem;">
-        <input type="checkbox" id="pdf-receipt" style="margin-top:0.2rem;">
-        <span>Agregar al final una página de <strong>constancia de recepción</strong> (campos en blanco para nombre, departamento, fecha y firmas).</span>
-      </label>
+      <div class="form-group">
+        <label class="form-label" for="pdf-format">Formato</label>
+        <select id="pdf-format" class="form-control">
+          <option value="a4">Documento A4 normal</option>
+          <option value="booklet">Cuadernillo para imprimir (portada + páginas en orden)</option>
+        </select>
+      </div>
+      <div class="form-group" id="pdf-cover-group" hidden>
+        <label class="form-label" for="pdf-cover">Estilo de portada</label>
+        <select id="pdf-cover" class="form-control">
+          <option value="typographic">Minimalista (bloques en azul y amarillo)</option>
+          <option value="silhouette">Silueta del edificio (atardecer)</option>
+        </select>
+        <p class="cell-note" style="margin-top:0.5rem;">Páginas A4 en orden de lectura: portada, una página en blanco y el contenido desde la página 3. Al final se agregan páginas en blanco hasta completar un múltiplo de 4. El armado del cuadernillo se configura en la impresora.</p>
+      </div>
       <div id="pdf-error" class="form-error" role="alert" hidden></div>
       <div style="display:flex; gap:1rem; justify-content:flex-end;">
         <button class="btn btn-secondary" id="pdf-cancel">Cancelar</button>
         <button class="btn btn-primary" id="pdf-go"><i data-lucide="download"></i> Descargar</button>
       </div>`);
     modal.$('pdf-cancel').onclick = modal.close;
+    modal.$('pdf-format').onchange = () => { modal.$('pdf-cover-group').hidden = modal.$('pdf-format').value !== 'booklet'; };
     modal.$('pdf-go').onclick = async () => {
       const go = modal.$('pdf-go');
       const err = modal.$('pdf-error');
       go.disabled = true; err.hidden = true;
       try {
         const data = await ruleService.loadBuildingRules(building.id); // lo último guardado en la base
+        // Color de marca y pisos salen del registro del edificio (para la portada del cuadernillo)
+        const { data: b } = await supabase.from('buildings').select('name, code, address, city, total_floors').eq('id', building.id).maybeSingle();
         await exportRulesPdf({
-          building: { name: building.name, code: building.code, address: building.address, city: building.city },
-          intro: data.intro, categories: data.categories, includeReceipt: modal.$('pdf-receipt').checked
+          building: { ...building, ...(b || {}) },
+          intro: data.intro, categories: data.categories,
+          booklet: modal.$('pdf-format').value === 'booklet' ? { coverStyle: modal.$('pdf-cover').value } : null
         });
         modal.close();
       } catch (e) {
