@@ -22,14 +22,24 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Debe coincidir con LOGIN_EMAIL_DOMAIN de js/config.js. Se puede cambiar con un secreto.
 const LOGIN_EMAIL_DOMAIN = Deno.env.get("LOGIN_EMAIL_DOMAIN") ?? "ibyzacorp.com";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Solo el portal (y la copia local de pruebas) pueden llamar a esta función desde un navegador.
+// Se puede ampliar con el secreto ALLOWED_ORIGINS (orígenes separados por coma).
+const ALLOWED_ORIGINS = new Set([
+  "https://portal.ibyzaedificios.com",
+  "http://localhost:8080",
+  "http://127.0.0.1:8080",
+  ...(Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+]);
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+function corsFor(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "https://portal.ibyzaedificios.com",
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 // DEBE ser idéntica a normalizeUsername de js/utils/username.js
 function normalizeUsername(s: string): string {
@@ -70,6 +80,10 @@ function generatePassword(fullName: string, unitCode?: string): string {
 }
 
 Deno.serve(async (req) => {
+  const CORS = corsFor(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
 
