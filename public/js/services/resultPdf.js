@@ -16,17 +16,18 @@ const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
 const signed = n => `${n < 0 ? '-' : '+'}${money(Math.abs(n))}`;
 
 /** Comprueba que los totales del resumen coincidan con el detalle que se va a imprimir. */
-function checkTotals(rows, s, { fromDate = '' } = {}) {
+function checkTotals(rows, s, { fromDate = '', only = null } = {}) {
   const valid = rows.filter(r => r.status === 'VALIDO' && r.kind !== 'SALDO' && (!fromDate || String(r.op_date) >= fromDate));
   const sum = kind => r2(valid.filter(r => r.kind === kind).reduce((t, r) => t + Number(r.amount), 0));
   const problems = [];
-  if (Math.abs(sum('CUOTA') - Number(s.fees_collected)) > 0.01) problems.push('las cuotas cobradas no coinciden con el detalle');
-  if (Math.abs(sum('INGRESO') - Number(s.other_income)) > 0.01) problems.push('los otros ingresos no coinciden con el detalle');
-  if (Math.abs(-sum('GASTO') - Number(s.expenses_paid)) > 0.01) problems.push('los gastos pagados no coinciden con el detalle');
+  const check = k => !only || only.includes(k);
+  if (check('CUOTA') && Math.abs(sum('CUOTA') - Number(s.fees_collected)) > 0.01) problems.push('las cuotas cobradas no coinciden con el detalle');
+  if (check('INGRESO') && Math.abs(sum('INGRESO') - Number(s.other_income)) > 0.01) problems.push('los otros ingresos no coinciden con el detalle');
+  if (check('GASTO') && Math.abs(-sum('GASTO') - Number(s.expenses_paid)) > 0.01) problems.push('los gastos pagados no coinciden con el detalle');
   if (problems.length) throw new Error(`No se generó el PDF: ${problems.join('; ')}. Actualice la pantalla e inténtelo de nuevo.`);
 }
 
-async function renderPdf({ title, subtitle, info, head, body, colStyles, totals, extra, filename, amountCol, typeCol, cautions }) {
+async function renderPdf({ title, subtitle, info, head, body, colStyles, totals, extra, filename, amountCol, typeCol, cautions, filtersText = '' }) {
   await loadScript(JSPDF_URL);
   await loadScript(AUTOTABLE_URL);
   const logo = await loadLogo();
@@ -48,6 +49,11 @@ async function renderPdf({ title, subtitle, info, head, body, colStyles, totals,
     doc.setFont('helvetica', 'normal').setTextColor(...MUTED).text(`${label}:`, W - M - vw - 2, y, { align: 'right' });
   });
   doc.setDrawColor(...BLUE).setLineWidth(0.6).line(M, 26, W - M, 26);
+  let tableStartY = 32;
+  if (filtersText) {
+    doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(...MUTED).text(`Filtros aplicados: ${filtersText}`, M, 31);
+    tableStartY = 35;
+  }
   const compactHeader = () => {
     doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(...TEXT).text(title, M, 13);
     doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(...MUTED).text(subtitle || '', W - M, 13, { align: 'right' });
@@ -61,13 +67,13 @@ async function renderPdf({ title, subtitle, info, head, body, colStyles, totals,
     if (d.section === 'head') { d.cell.styles.halign = 'center'; return; }
     if (d.section !== 'body') return;
     if (d.column.index === amountCol || d.column.index === typeCol) {
-      const income = String(d.row.raw[typeCol]) === 'INGRESO';
+      const income = typeCol != null ? String(d.row.raw[typeCol]) === 'INGRESO' : String(d.row.raw[amountCol]).startsWith('+');
       d.cell.styles.textColor = income ? INCOME : EXPENSE;
       if (d.column.index === amountCol) d.cell.styles.fontStyle = 'bold';
     }
   };
 
-  doc.autoTable({ startY: 32, head: [head], body, margin: { top: 24, bottom: BOTTOM, left: M, right: M }, theme: 'plain',
+  doc.autoTable({ startY: tableStartY, head: [head], body, margin: { top: 24, bottom: BOTTOM, left: M, right: M }, theme: 'plain',
     rowPageBreak: 'avoid', showHead: 'everyPage', styles: baseStyles, headStyles, alternateRowStyles: { fillColor: BG_ALT },
     columnStyles: colStyles, didParseCell: colorize, didDrawPage: (d) => { if (d.pageNumber > 1) compactHeader(); } });
 
@@ -136,6 +142,69 @@ export async function exportBuildingResultPdf({ buildingName, periodText, rows, 
   });
 }
 
+/**
+ * Libro de movimientos de UN edificio exportado según la pestaña elegida: el "Estado de ingresos y egresos" (Todos),
+ * el "Reporte de ingresos" o el "Reporte de egresos". Mismo diseño en los tres.
+ * rows = movimientos que se ven (cronológicos, ya filtrados por pestaña, categoría y búsqueda); summary = get_cash_summary.
+ */
+export async function exportBuildingLedgerPdf({ buildingName, periodText, tab = 'TODOS', filtersText = '', rows, summary }) {
+  const list = rows.filter(r => r.status === 'VALIDO' && r.kind !== 'SALDO');
+  if (!list.length) throw new Error('No hay movimientos con esos filtros para exportar.');
+  // Sin filtros de categoría o búsqueda, los totales deben coincidir con el resumen del período
+  if (!filtersText) checkTotals(rows, summary, { only: tab === 'INGRESOS' ? ['CUOTA', 'INGRESO'] : tab === 'EGRESOS' ? ['GASTO'] : null });
+
+  const sum = kind => r2(list.filter(r => r.kind === kind).reduce((t, r) => t + Number(r.amount), 0));
+  const fees = sum('CUOTA'), other = sum('INGRESO'), spent = r2(-sum('GASTO'));
+  const META = {
+    TODOS: { title: 'ESTADO DE INGRESOS Y EGRESOS', file: 'Estado_de_Ingresos_y_Egresos' },
+    INGRESOS: { title: 'REPORTE DE INGRESOS', file: 'Reporte_de_Ingresos' },
+    EGRESOS: { title: 'REPORTE DE EGRESOS', file: 'Reporte_de_Egresos' }
+  }[tab] || { title: 'ESTADO DE INGRESOS Y EGRESOS', file: 'Estado_de_Ingresos_y_Egresos' };
+  const totals = tab === 'INGRESOS' ? [['Cuotas cobradas', money(fees)], ['Otros ingresos', money(other)], ['Total ingresos', money(r2(fees + other))]]
+    : tab === 'EGRESOS' ? [['Gastos pagados', money(spent)], ['Total egresos', money(spent)]]
+    : [['Cuotas cobradas', money(fees)], ['Otros ingresos', money(other)], ['Gastos pagados', money(spent)],
+       [filtersText ? 'Resultado de lo filtrado' : 'Resultado del mes', signed(r2(fees + other - spent))]];
+
+  // Un gasto trae "concepto · proveedor" en un solo texto: se separa para mostrarlos en columnas propias
+  const split = (r) => {
+    const i = r.kind === 'GASTO' ? String(r.concept).lastIndexOf(' · ') : -1;
+    return i > 0 ? [String(r.concept).slice(0, i), String(r.concept).slice(i + 3)] : [r.concept, ''];
+  };
+  const method = r => r.method || '-';
+
+  // Egresos e ingresos llevan más datos (proveedor, método de pago) y sin la columna Tipo, que sería igual en todas las filas
+  const layouts = {
+    EGRESOS: {
+      head: ['Nº', 'Fecha de operación', 'Categoría', 'Concepto', 'Proveedor', 'Método de pago', 'Monto'],
+      body: list.map((r, i) => { const [c, p] = split(r); return [i + 1, dmy(r.op_date), r.category, c, p || '-', method(r), signed(Number(r.amount))]; }),
+      colStyles: { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 28, halign: 'center' }, 2: { cellWidth: 38 }, 3: { cellWidth: 'auto' },
+        4: { cellWidth: 40 }, 5: { cellWidth: 38 }, 6: { cellWidth: 32, halign: 'right' } },
+      amountCol: 6, typeCol: null
+    },
+    INGRESOS: {
+      head: ['Nº', 'Fecha de operación', 'Categoría', 'Concepto', 'Método de pago', 'Monto'],
+      body: list.map((r, i) => [i + 1, dmy(r.op_date), r.category, r.concept, method(r), signed(Number(r.amount))]),
+      colStyles: { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 28, halign: 'center' }, 2: { cellWidth: 40 }, 3: { cellWidth: 'auto' },
+        4: { cellWidth: 40 }, 5: { cellWidth: 32, halign: 'right' } },
+      amountCol: 5, typeCol: null
+    }
+  };
+  const layout = layouts[tab] || {
+    head: ['Nº', 'Fecha de operación', 'Categoría', 'Concepto', 'Tipo', 'Monto'],
+    body: list.map((r, i) => [i + 1, dmy(r.op_date), r.category, r.concept, r.amount > 0 ? 'INGRESO' : 'EGRESO', signed(Number(r.amount))]),
+    colStyles: { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 44 }, 3: { cellWidth: 'auto' },
+      4: { cellWidth: 24, halign: 'center' }, 5: { cellWidth: 34, halign: 'right' } },
+    amountCol: 5, typeCol: 4
+  };
+
+  await renderPdf({
+    title: META.title, subtitle: buildingName, filtersText,
+    info: [['Período', periodText], ['N° de movimientos', String(list.length)]],
+    ...layout, totals,
+    cautions: ['Los movimientos se ubican por su fecha de operación (cuando se pagó o cobró). Las cuotas y gastos pendientes no se cuentan como dinero recibido ni pagado. En gastos compartidos solo figura la parte de este edificio.'],
+    filename: `${META.file}_${clean(buildingName)}_${clean(periodText)}.pdf`
+  });
+}
 /**
  * Caja general. rows = libro completo cronológico; summary = get_cash_summary; buildingName = null si es de todos los edificios.
  */

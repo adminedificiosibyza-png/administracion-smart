@@ -7,7 +7,7 @@ import { openIncomeForm, openPaymentsModal, monthYearHTML, readMonthYear, esc } 
 import { alertDialog, confirmDialog } from '../../ui/dialog.js';
 import { formatCurrency, formatDate } from '../../config.js';
 import { createLedger } from './libroMovimientos.js';
-import { exportBuildingResultPdf } from '../../services/resultPdf.js';
+import { exportBuildingResultPdf, exportBuildingLedgerPdf } from '../../services/resultPdf.js';
 
 export function renderAdminResultado() {
   const container = document.createElement('div');
@@ -72,7 +72,11 @@ export function renderAdminResultado() {
             <td><strong>${formatCurrency(i.amount)}</strong></td><td style="text-align:right; white-space:nowrap;">${i.status === 'VALIDO' ? `<button class="btn btn-outline btn-sm" data-inc-edit="${i.id}"><i data-lucide="pencil"></i></button> <button class="btn btn-outline btn-sm" data-inc-void="${i.id}" style="color: var(--status-danger);"><i data-lucide="ban"></i></button>` : ''}</td></tr>`).join('')
             : '<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Sin otros ingresos registrados.</td></tr>'}</tbody></table></div></div>`;
 
-    ledger = createLedger({ showBuildingCol: false, onViewExpense: openExpense });
+    ledger = createLedger({
+      showBuildingCol: false, onViewExpense: openExpense,
+      // Sale lo que se ve en el libro (Todos = Estado de ingresos y egresos, Ingresos o Egresos, + filtros) y respeta el mes elegido arriba
+      onExportPdf: ({ tab, rows, filtersText }) => exportBuildingLedgerPdf({ buildingName: building.name, periodText: periodText(period), tab, filtersText, rows, summary: cash })
+    });
     container.querySelector('#rs-ledger').appendChild(ledger.el);
     ledger.load({ from, to, buildingId: building.id, summary: cash, showBalance: false });
 

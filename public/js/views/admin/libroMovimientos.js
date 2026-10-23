@@ -15,8 +15,10 @@ const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ
  * Crea el libro. buildingId = null: general (todos los edificios); con valor: solo ese edificio.
  * showBalance: columna de saldo acumulado (solo en la vista general sin filtro de edificio).
  * onViewExpense(expenseId): abre el detalle (de solo lectura) de un gasto.
+ * onExportPdf({ tab, rows, filtersText }): si se da, aparece el botón "Exportar PDF" con lo que se está viendo
+ *   (pestaña Todos / Ingresos / Egresos, categoría y búsqueda), en orden cronológico.
  */
-export function createLedger({ showBuildingCol = true, onViewExpense }) {
+export function createLedger({ showBuildingCol = true, onViewExpense, onExportPdf = null }) {
   const el = document.createElement('div');
   const st = { rows: [], tab: 'TODOS', q: '', category: '', shown: PAGE, summary: null, buildingId: null, showBalance: false, from: '', to: '', error: '' };
 
@@ -68,6 +70,7 @@ export function createLedger({ showBuildingCol = true, onViewExpense }) {
           <input id="lg-q" class="form-control" style="min-width:220px;" placeholder="Buscar movimiento..." value="${esc(st.q)}" autocomplete="off">
           <select id="lg-cat" class="form-select" style="min-width:170px;"><option value="">Todas las categorías</option>${cats.map(c => `<option ${c === st.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
           <button class="btn btn-outline btn-sm" id="lg-csv"><i data-lucide="file-spreadsheet"></i> Exportar CSV</button>
+          ${onExportPdf ? '<button class="btn btn-sm btn-pdf" id="lg-pdf"><i data-lucide="file-text"></i> Exportar PDF</button>' : ''}
         </div>
       </div>
       ${st.error ? `<p class="form-error">${esc(st.error)}</p>` : ''}
@@ -101,6 +104,20 @@ export function createLedger({ showBuildingCol = true, onViewExpense }) {
       ['#', 'Registro', 'Fecha de operación', 'Categoría', 'Concepto', 'Edificio', 'Monto', 'Tipo', ...(st.showBalance ? ['Saldo'] : [])],
       ...rows.slice().reverse().map(r => [r.n, r.kind === 'SALDO' ? '' : fmtDateTime(r.created_at), r.op_date, r.category, r.concept, r.building_name || '',
         Number(r.amount).toFixed(2), r.status === 'ANULADO' ? 'ANULADO' : (r.amount > 0 ? 'INGRESO' : 'EGRESO'), ...(st.showBalance ? [r.balance != null ? r.balance.toFixed(2) : ''] : [])])]);
+    el.querySelector('#lg-pdf')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const filterParts = [];
+      if (st.category) filterParts.push(`Categoría: ${st.category}`);
+      if (st.q.trim()) filterParts.push(`Búsqueda: "${st.q.trim()}"`);
+      btn.disabled = true;
+      try {
+        await onExportPdf({ tab: st.tab, rows: rows.filter(r => r.kind !== 'SALDO').slice().reverse(), filtersText: filterParts.join(' · ') });
+      } catch (err) {
+        alertDialog({ tone: 'danger', title: 'No se pudo generar el PDF', message: err.message });
+      } finally {
+        btn.disabled = false;
+      }
+    });
     el.querySelectorAll('[data-lview]').forEach(b => b.onclick = async () => {
       const [kind, id] = b.dataset.lview.split(':');
       const r = st.rows.find(x => x.kind === kind && String(x.id) === id);

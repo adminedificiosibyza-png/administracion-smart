@@ -2,7 +2,8 @@
 import { activeBuilding } from '../../services/activeBuilding.js';
 import { authService } from '../../services/authService.js';
 import { isSupabaseConnected } from '../../supabaseClient.js';
-import { maintenanceService, FREQUENCIES, SERVICE_STATUS, MONTH_NAMES, monthRange, periodText } from '../../services/maintenanceService.js';
+import { maintenanceService, FREQUENCIES, SERVICE_STATUS, EXPENSE_STATUS, MONTH_NAMES, monthRange, periodText } from '../../services/maintenanceService.js';
+import { exportExpensesPdf } from '../../services/expensesPdf.js';
 import { openExpenseForm, openServiceForm, openProvidersModal, openPaymentsModal, openIncomeForm, monthYearHTML, readMonthYear, esc } from '../../ui/mantenimientoModals.js';
 import { alertDialog, confirmDialog, promptDialog } from '../../ui/dialog.js';
 import { formatCurrency, formatDate } from '../../config.js';
@@ -152,6 +153,29 @@ export function renderAdminMantenimiento() {
   }
 
   /* ---- Gastos ---- */
+  async function exportGastosPdf(rows, btn) {
+    const filterParts = [];
+    if (filters.category) filterParts.push(`Categoría: ${filters.category}`);
+    if (filters.provider) filterParts.push(`Proveedor: ${(providers.find(p => p.id === filters.provider) || {}).name || ''}`);
+    if (filters.status) filterParts.push(`Estado: ${(EXPENSE_STATUS[filters.status] || {}).label || filters.status}`);
+    if (filters.q.trim()) filterParts.push(`Búsqueda: "${filters.q.trim()}"`);
+    const pdfRows = rows.map(r => ({
+      period: periodText(r.period), opDate: r.opDate, concept: r.concept, category: r.category, provider: r.provider, due: r.due,
+      note: [r.service && r.service !== r.concept ? r.service : '',
+             r.scope === 'COMPARTIDO' ? `Compartido: su parte de ${formatCurrency(r.amount)} de ${formatCurrency(r.total)}` : ''].filter(Boolean).join('\n'),
+      amount: r.amount, paid: r.paid, balance: r.balance, voided: r.status === 'ANULADO',
+      status: (r.status !== 'PAGADO' && r.status !== 'ANULADO' && r.paid > 0) ? 'Pago parcial' : (EXPENSE_STATUS[r.status] || {}).label || r.status
+    }));
+    btn.disabled = true;
+    try {
+      await exportExpensesPdf({ buildingName: building.name, periodText: filterPeriodLabel(filters), filtersText: filterParts.join(' · '), rows: pdfRows });
+    } catch (err) {
+      alertDialog({ tone: 'danger', title: 'No se pudo generar el PDF', message: err.message });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function drawGastos() {
     const body = container.querySelector('#mt-body');
     const draw = () => {
@@ -160,11 +184,14 @@ export function renderAdminMantenimiento() {
       body.querySelector('#mt-count').textContent = `${rows.length} gasto(s)`;
       bindTableActions(body, rows, expenseHandlers());
       body.querySelector('#mt-csv').onclick = () => exportExpensesCsv(`Gastos_${building.name.replace(/[^A-Za-z0-9]+/g, '_')}.csv`, rows);
+      body.querySelector('#mt-pdf').onclick = (e) => exportGastosPdf(rows, e.currentTarget);
       if (window.lucide) window.lucide.createIcons();
     };
     body.innerHTML = `<div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:.5rem; flex-wrap:wrap;"><span id="mt-count" class="badge badge-neutral"></span>
-        <button class="btn btn-outline btn-sm" id="mt-csv"><i data-lucide="file-spreadsheet"></i> Exportar CSV</button></div>
+        <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" id="mt-csv"><i data-lucide="file-spreadsheet"></i> Exportar CSV</button>
+          <button class="btn btn-sm btn-pdf" id="mt-pdf"><i data-lucide="file-text"></i> Exportar PDF</button></div></div>
       ${filtersHTML(filters, { rows: expenses, providers })}<div id="mt-table" style="margin-top:1rem;"></div></div>`;
     bindFilters(body, filters, (typing) => {
       draw();
