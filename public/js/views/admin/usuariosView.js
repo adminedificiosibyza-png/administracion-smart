@@ -1,6 +1,7 @@
 /* Administración de usuarios y accesos: una cuenta por persona, con sus departamentos */
 import { userAdminService } from '../../services/userAdminService.js';
 import { confirmDialog, alertDialog, promptDialog } from '../../ui/dialog.js';
+import { showCredentialsModal } from '../../ui/credentials.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const normalize = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -162,44 +163,14 @@ export function renderAdminUsuarios() {
 
   /* ---------------- credenciales (se muestran UNA vez) ---------------- */
 
-  function showCredentials(title, fullName, password) {
-    const modal = openModal(`<i data-lucide="key-round" style="color: var(--primary);"></i> ${esc(title)}`, `
-      <p style="margin-bottom: 1rem; font-size: 0.9rem;">Entregue estos datos a la persona. <strong>La contraseña solo se muestra ahora</strong>; si se pierde, se genera una nueva.</p>
-      <div class="credential-box">
-        <div><span>Usuario</span><strong id="cred-user">${esc(fullName)}</strong></div>
-        <div><span>Contraseña</span><strong id="cred-pass" class="mono">${esc(password)}</strong></div>
-      </div>
-      <div style="display:flex; gap:0.75rem; justify-content:flex-end; flex-wrap:wrap; margin-top:1.25rem;">
-        <button class="btn btn-outline btn-sm" id="cred-copy"><i data-lucide="copy"></i> Copiar</button>
-        <button class="btn btn-outline btn-sm" id="cred-print"><i data-lucide="printer"></i> Imprimir hoja</button>
-        <button class="btn btn-primary btn-sm" id="cred-done">Listo</button>
-      </div>`);
-    modal.$('cred-copy').onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(`Usuario: ${fullName}\nContraseña: ${password}`);
-        modal.$('cred-copy').textContent = 'Copiado';
-      } catch { alertDialog({ tone: 'warning', message: 'No se pudo copiar. Seleccione el texto manualmente.' }); }
-    };
-    modal.$('cred-print').onclick = () => {
-      const w = window.open('', '_blank', 'width=480,height=520');
-      if (!w) { alertDialog({ tone: 'warning', message: 'El navegador bloqueó la ventana de impresión. Permita las ventanas emergentes para este sitio.' }); return; }
-      w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Credenciales de acceso</title>
-        <style>body{font-family:Arial,sans-serif;padding:32px;color:#1a1f16}h1{font-size:20px;color:#4f7609}
-        .box{border:2px solid #4f7609;border-radius:8px;padding:20px;margin-top:16px}
-        .l{font-size:12px;color:#5b6355;text-transform:uppercase;margin-top:12px}.v{font-size:20px;font-weight:bold;font-family:monospace}
-        p{font-size:13px;color:#5b6355;margin-top:20px}</style></head><body>
-        <h1>ADMINISTRACIÓN SMART — Credenciales de acceso</h1><div class="box">
-        <div class="l">Usuario (nombre completo)</div><div class="v">${esc(fullName)}</div>
-        <div class="l">Contraseña</div><div class="v">${esc(password)}</div></div>
-        <p>Guarde esta hoja en un lugar seguro. Puede cambiar su contraseña desde "Mi Perfil".</p>
-        </body></html>`);
-      w.document.close();
-      w.focus();
-      setTimeout(() => w.print(), 300);   // la impresión se pide desde el sistema (la política de seguridad no permite scripts dentro de la hoja)
-    };
-    modal.$('cred-done').onclick = () => { modal.close(); reload(); };
+  // Ventana compartida con el resto del sistema (incluye el PDF con QR); al cerrarla se recarga la lista
+  function showCredentials(title, fullName, password, places = []) {
+    showCredentialsModal(title, fullName, password, reload, places);
   }
 
+  // Departamento y edificio de cada asignación, para la hoja de credenciales
+  const placesFromUnitIds = ids => ids.map(id => units.find(u => u.id === id)).filter(Boolean)
+    .map(u => ({ unit: u.code, building: (u.buildings && u.buildings.name) || '' }));
   /* ---------------- nuevo usuario ---------------- */
 
   function openCreateModal() {
@@ -260,8 +231,10 @@ export function renderAdminUsuarios() {
       const btn = modal.$('nu-submit');
       btn.disabled = true;
       try {
-        const result = await userAdminService.createUser({ ...collect(), distinguisher });
-        showCredentials('Usuario creado', result.login_name || result.full_name, result.password);
+        const data = collect();
+        const result = await userAdminService.createUser({ ...data, distinguisher });
+        showCredentials('Usuario creado', result.login_name || result.full_name, result.password,
+          placesFromUnitIds(data.assignments.map(a => a.unit_id)));
       } catch (err) {
         btn.disabled = false;
         if (err.code === 'USERNAME_EXISTS') return askIfSamePerson(err.payload.existing);
@@ -386,7 +359,8 @@ export function renderAdminUsuarios() {
     if (!ok) return;
     try {
       const result = await userAdminService.resetPassword(person.id);
-      showCredentials('Nueva contraseña', result.login_name || result.full_name, result.password);
+      showCredentials('Nueva contraseña', result.login_name || result.full_name, result.password,
+        placesFromUnitIds(person.assignments.filter(a => a.active).map(a => a.unit_id)));
     } catch (err) { alertDialog({ tone: 'danger', message: err.message }); }
   }
 

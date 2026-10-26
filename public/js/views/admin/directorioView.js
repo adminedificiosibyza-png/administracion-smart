@@ -346,7 +346,8 @@ export function renderAdminDirectorio() {
           assignments: [assignment()],
           distinguisher
         });
-        showCredentialsModal('Persona creada y asignada', result.login_name || result.full_name, result.password, reload);
+        showCredentialsModal('Persona creada y asignada', result.login_name || result.full_name, result.password, reload,
+          [{ unit: unit.code, building: building ? building.name : '' }]);
       } catch (err) {
         btn.disabled = false;
         if (err.code === 'USERNAME_EXISTS') return askIfSame(err.payload.existing);
